@@ -1,33 +1,80 @@
 import puppeteer from 'puppeteer';
 import fs from 'fs/promises';
+import nodemailer from 'nodemailer';
+import mailgunTransport from 'nodemailer-mailgun-transport';
+import dotenv from 'dotenv/config';
+import { CronJob } from 'cron';
 
-var file_data = await fs.readFile('data.json', { encoding: 'utf-8' })
-let prev_data = [];
-try {
-  prev_data = JSON.parse(file_data);
-} catch(err){
-  console.error('data file does not contain proper json');
+async function main() {
+  var file_data = await fs.readFile('./data/data.json', { encoding: 'utf-8' })
+  let prev_data = [];
+  try {
+    prev_data = JSON.parse(file_data);
+  } catch(err){
+    console.error('data file does not contain proper json');
+  }
+
+  const prev_ids = prev_data.map(a => { return a.vid } );
+
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  page.setDefaultNavigationTimeout(0);
+  const response = await page.goto('https://robbinsrepairables.com/vehicles.php');
+
+  const cars = await page.$$eval('h3 a', (nodes) => {
+    return nodes.map(a => {
+      return {
+        title: a.innerHTML,
+        link: a.href,
+        vid: a.href.split('=')[1],
+        block: a.parentNode.parentNode.parentNode.outerHTML
+      }
+    });
+  });
+
+  let new_cars = cars.filter(a => { return prev_ids.indexOf(a.vid) == -1 });
+  const transport_opt = {
+    auth: {
+      domain: process.env.MAILGUN_DOMAIN,
+      api_key: process.env.MAILGUN_KEY
+    }
+  };
+  var transport = mailgunTransport(transport_opt); 
+  var transporter = nodemailer.createTransport(transport);
+
+  if(new_cars.length > 0){
+    let html = "";
+    for(var i=0; i<new_cars.length; i++){
+      html += '<hr>' + new_cars[i].block;
+    }
+
+    const mailOpts = {
+      from: process.env.MAIL_FROM,
+      to: process.env.MAIL_TO,
+      subject: "New Cars at Robbin's Repairables",
+      html: html
+    };
+    transporter.sendMail(mailOpts, (err, response) => {
+      if(err){
+        console.log('error sending email', err);
+      } else {
+        console.log('message sent');
+      }
+    });
+    //console.log('new cars: ', new_cars );
+  } else {
+    console.log('no new cars at this time');
+  }
+
+  await fs.writeFile('./data/data.json', JSON.stringify(cars), function(){});
+
+  await browser.close();
 }
 
-const prev_ids = prev_data.map(a => { return a.vid } );
-
-const browser = await puppeteer.launch();
-const page = await browser.newPage();
-page.setDefaultNavigationTimeout(0);
-const response = await page.goto('https://robbinsrepairables.com/vehicles.php');
-
-const cars = await page.$$eval('h3 a', (nodes) => {
-  return nodes.map(a => {
-    return {
-      title: a.innerHTML,
-      link: a.href,
-      vid: a.href.split('=')[1]
-    }
-  });
-});
-
-console.log('new cars: ', cars.filter(a => { return prev_ids.indexOf(a.vid) == -1 }));
-
-await fs.writeFile('./data.json', JSON.stringify(cars), function(){});
-
-await browser.close();
+const job = new CronJob(
+  '0 0 8-20 * * *',
+  main,
+  null,
+  true,
+  'America/New_York'
+);
