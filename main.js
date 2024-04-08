@@ -88,8 +88,8 @@ async function main() {
 }
 
 const job = new CronJob(
-  '0 0 8-20 * * *',
-  //'*/10 * * * * *',
+  //'0 0 8-20 * * *',
+  '*/10 * * * * *',
   main,
   null,
   true,
