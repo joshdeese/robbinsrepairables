@@ -11,7 +11,8 @@
   "description": "Check robbinsrepairables.com for new car listings",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "docker run --env-file ./.env -v ./data:/app/data --rm -d --name Robbins-Repairables $(docker build -q .);"
   },
   "author": "Josh Deese",
   "license": "ISC",

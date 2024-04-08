@@ -23,11 +23,20 @@ async function main() {
 
   const cars = await page.$$eval('h3 a', (nodes) => {
     return nodes.map(a => {
+      let myNode = a.parentNode.parentNode.parentNode;
+      let myImg = myNode.querySelector('img');
+      myImg.setAttribute('src', myImg.getAttribute('data-original'));
+      let hrefs = myNode.querySelectorAll('a');
+
+      for(var i=0; i<hrefs.length; i++){
+        hrefs[i].setAttribute('href', 'https://robbinsrepairables.com' + hrefs[i].getAttribute('href'));
+      }
+
       return {
         title: a.innerHTML,
         link: a.href,
         vid: a.href.split('=')[1],
-        block: a.parentNode.parentNode.parentNode.outerHTML
+        block: myNode.outerHTML
       }
     });
   });
@@ -54,6 +63,7 @@ async function main() {
       subject: "New Cars at Robbin's Repairables",
       html: html
     };
+    //console.log('mailOpts: ', mailOpts);
     transporter.sendMail(mailOpts, (err, response) => {
       if(err){
         console.log('error sending email', err);
@@ -63,6 +73,12 @@ async function main() {
     });
     //console.log('new cars: ', new_cars );
   } else {
+    const mailOpts = {
+      from: process.env.MAIL_FROM,
+      to: process.env.MAIL_TO,
+      subject: "New Cars at Robbin's Repairables",
+      text: "No new cars at this time"
+    };
     console.log('no new cars at this time');
   }
 
@@ -73,6 +89,7 @@ async function main() {
 
 const job = new CronJob(
   '0 0 8-20 * * *',
+  //'*/10 * * * * *',
   main,
   null,
   true,
