@@ -12,7 +12,8 @@
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "docker run --env-file ./.env -v ./data:/app/data --rm -d --name Robbins-Repairables $(docker build -q .);"
+    "start": "docker run --env-file ./.env -v ./data:/home/node/app/data --rm -d --name Robbins-Repairables $(docker build -q .);",
+    "docker_log": "docker run --env-file ./.env -v ./data:/home/node/app/data --rm -it --name Robbins-Repairables $(docker build -q .);"
   },
   "author": "Josh Deese",
   "license": "ISC",
